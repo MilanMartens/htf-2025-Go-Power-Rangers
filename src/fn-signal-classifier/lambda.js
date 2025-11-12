@@ -6,42 +6,74 @@ const AWSXRay = require('aws-xray-sdk-core');
 const snsArn = process.env.SNSArn;
 
 exports.handler = async (event) => {
-    console.log(JSON.stringify(event));
+    console.log("input event:",JSON.stringify(event));
 
     // Determine if the message is a dark signal or not
     let isDark;
-
+    let soortObservatie;
     let messageToSend;
+    
+    // Check of alle fields zijn inguld.
+    if (typeof event === "string") {
+    event = JSON.parse(event);
+    }
+    const detailField = event.detail;
+
+    // check of we een dark-signal hebben.
+    isDark = detailField?.data ? true : false;
+
 
     if (!isDark) {
-        // Create correct message
-        messageToSend = null;
+        // check of dat het type een creature, hazard of anamoly is.
+        const detailTypeField = detailField.type;
+        const detailIntensity = parseInt(detailField.intensity);
+
+        // vergelijk de fields en geef het type terug
+        if (detailIntensity >= 2 & detailTypeField != "creature") {
+            soortObservatie = "alert";
+        }else if (detailIntensity >= 3 & detailTypeField === "creature"){
+            soortObservatie = "rare-observation";
+        }else{
+            soortObservatie = "observation";
+        }
+
     } else {
-        // Create correct message
-        messageToSend = null;
+        soortObservatie = "dark-signal";
+        event["originalPayload"] = event["detail"]
+        delete event["detail"];
+
     }
+    // voeg de observatie
+    event["soortObservatie"] = soortObservatie;
 
-    console.log(JSON.stringify(messageToSend))
+    // Create correct message
+    messageToSend = event;
+    console.log("message event: ",JSON.stringify(messageToSend))
+
     // Send to SNS
-}
-
-function determineSignal(message) {
-    // Return the correct signal-type
-    return;
+    await sendToSNS(messageToSend)
 }
 
 async function sendToSNS(message) {
-    console.log(message);
-
     // Client to be used
     const snsClient = AWSXRay.captureAWSv3Client(new SNSClient());
- 
+    const topicArn = "arn:aws:sns:eu-central-1:128894441789:HTF25-GoPowerRanger-Challenge2SNS-InDBaZFP802P"
+
     // Setup parameters for SNS
-    let params;
+    let params= {
+        TopicArn: topicArn,
+        Message:JSON.stringify(message)
+    };
 
-    // Get a response
-    let response;
 
-    // Just to check if it worked
-    console.log(response);
+    try {
+        const command = new PublishCommand(params)
+        // Get a response
+        let response = await snsClient.send(command);
+        // Just to check if it worked
+        console.log("response: ",response);
+
+    }catch (err) {
+    console.error("Error sending message:", err);
+  }
 }
