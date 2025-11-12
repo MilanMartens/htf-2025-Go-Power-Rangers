@@ -30,8 +30,8 @@ exports.handler = async (event) => {
     if (typeof inputMessage === "string") {
         inputMessage = JSON.parse(inputMessage);
     }
-    console.log("inputMessage: ", inputMessage)
-    console.log("details: ", inputMessage.detail)
+    //TODO FIX VOOR ALS HET DARK SIGNALS ZIJN
+    console.log(inputMessage)
 
     const snsMessageInfo = {
         id: snsMessage.MessageId,
@@ -43,29 +43,31 @@ exports.handler = async (event) => {
         type: inputMessage.soortObservatie, 
     }
 
-    console.log("message: ",inputMessage);
-    console.log("snsMessages: ", snsMessageInfo)
-
     // Check where it should be stored
-
+    console.log("snsMessage",snsMessage)
+    await insertIntoDynamoDB(snsMessageInfo)
     // Call the correct message
 }
 
-async function insertIntoDynamoDB() {
+async function insertIntoDynamoDB(message) {
     // Format the message for DynamoDB parameters (check README for indexes)
     try {
-    // DynamoDB verwacht waarden in een speciaal format: { S: "string" } voor strings, { N: "123" } voor nummers
-    const params = {
-        TableName: "htf-2025-sonar-observations", // vervang door jouw DynamoDB tabelnaam
-        Item: {
-            id: { S: details.id },      // string
-            name: { S: details.name },  // string
-            age: { N: details.age.toString() } // nummer moet een string zijn
-        }
-    };
+        // DynamoDB verwacht waarden in een speciaal format: { S: "string" } voor strings, { N: "123" } voor nummers
+        const params = {
+            TableName: "HTF25-GoPowerRanger-Challenge2DynamoDB-1KVXLD5QGCLTV", 
+            Item: {
+                id: { S: message.id },      // string
+                team: { S: message.team },  // string
+                location: { S: message.location },  // string
+                intensity: { S: message.intensity },  // string
+                timestamp: { S: message.timestamp },  // string
+                type: { S: message.type },  // string
+                species: { S: message.species }
+            }
+        };
 
-    const command = new PutItemCommand(params);
-    const result = await client.send(command);
+    const command = new PutCommand(params);
+    const result = await dynamoClient.send(command);
     console.log("Item toegevoegd:", result);
     } catch (error) {
         console.error("Fout bij toevoegen:", error);
